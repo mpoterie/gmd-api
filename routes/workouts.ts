@@ -14,6 +14,7 @@ export const categories = [
   "c7",
 ] as string[];
 
+// This function handles filters our fixture using our two filters: monthSelected and categoriesSelected
 const getFilteredWorkouts = (
   workouts: Workout[],
   filters: {
@@ -88,7 +89,6 @@ const generateWorkoutsData = () => {
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();
-  // The idea here is to
   const in12Months = new Date(year + 1, month);
 
   for (let index = 0; index < 1000; index++) {
@@ -101,8 +101,8 @@ const generateWorkoutsData = () => {
       name: workoutsName[Math.floor(Math.random() * workoutsName.length)],
       startDate: faker.date.between(today, in12Months),
       category,
-      description: faker.lorem.paragraph(4),
-      img: faker.image.sports(),
+      description: faker.lorem.paragraph(20),
+      img: faker.image.abstract(1000, 400),
     };
     workouts.push(workout);
   }
@@ -113,7 +113,7 @@ class Class {
   public express: express.Application;
   public logger: Logger;
 
-  // array to hold users
+  // array to hold workouts
   public workouts: any[];
 
   constructor() {
@@ -131,7 +131,7 @@ class Class {
   }
 
   private routes(): void {
-    // request to get all the users
+    // Workouts list api endpoint
     this.express.get("/workouts", (req, res) => {
       this.logger.info("url:" + req.url);
       const offset = Number(req.query.offset) ?? 0;
@@ -157,13 +157,15 @@ class Class {
         monthSelected,
         categoriesSelected,
       });
+
       const pageCount = Math.ceil(filteredWorkouts.length / limit);
       res.json({
         pageCount,
         data: filteredWorkouts.slice(offset, offset + limit),
       });
     });
-    // request to get all the users by userName
+
+    // Single workout api endpoint
     this.express.get("/workouts/:workoutId", (req, res) => {
       this.logger.info("url:::::" + req.url);
       const workout = this.workouts.filter(function (workout) {
