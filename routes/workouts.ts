@@ -4,17 +4,63 @@ import * as express from "express";
 import { Logger } from "../logger/logger";
 import * as faker from "faker";
 
-export const categories = ["c1", "c2", "c3", "c4", "c5", "c6", "c7"] as const;
+export const categories = [
+  "c1",
+  "c2",
+  "c3",
+  "c4",
+  "c5",
+  "c6",
+  "c7",
+] as string[];
 
-export type Category = typeof categories;
+const getFilteredWorkouts = (
+  workouts: Workout[],
+  filters: {
+    monthSelected: string;
+    categoriesSelected: string[];
+  }
+) => {
+  return workouts.filter((workout) => {
+    let workoutPassDateFilter = true;
+    let workoutPassCategoryFilter = true;
+    if (filters.monthSelected) {
+      const workoutYear = workout.startDate.getFullYear();
+      const workoutMonth = workout.startDate.getMonth();
+      const yearFilter = new Date(filters.monthSelected).getFullYear();
+      const monthFilter = new Date(filters.monthSelected).getMonth();
+      if (workoutYear === yearFilter && monthFilter === workoutMonth) {
+        workoutPassDateFilter = true;
+      } else {
+        workoutPassDateFilter = false;
+      }
+    }
+    if (filters.categoriesSelected.length) {
+      workoutPassCategoryFilter = filters.categoriesSelected.reduce(
+        (acc, category) => {
+          if (workout.category === category) {
+            return true;
+          }
+          return acc;
+        },
+        false
+      );
+    }
+    return workoutPassDateFilter && workoutPassCategoryFilter;
+  });
+};
 
 export interface Workout {
   id: string;
   name: string;
   description: string;
   startDate: Date;
-  category: Category;
+  category: "c1" | "c2" | "c3" | "c4" | "c5" | "c6" | "c7";
   img: string;
+}
+
+function isValidDate(d: any) {
+  return !isNaN(Date.parse(d));
 }
 
 const generateWorkoutsData = () => {
@@ -39,16 +85,21 @@ const generateWorkoutsData = () => {
     "Power Up",
     "Ex-Press",
   ];
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  // The idea here is to
+  const in12Months = new Date(year + 1, month);
 
   for (let index = 0; index < 1000; index++) {
     // eslint-disable-next-line max-len
-    const category = (categories[
+    const category = categories[
       Math.floor(Math.random() * categories.length)
-    ] as unknown) as Category;
+    ] as "c1" | "c2" | "c3" | "c4" | "c5" | "c6" | "c7";
     const workout: Workout = {
       id: faker.datatype.uuid(),
       name: workoutsName[Math.floor(Math.random() * workoutsName.length)],
-      startDate: faker.date.soon(365),
+      startDate: faker.date.between(today, in12Months),
       category,
       description: faker.lorem.paragraph(4),
       img: faker.image.sports(),
@@ -85,13 +136,33 @@ class Class {
       this.logger.info("url:" + req.url);
       const offset = Number(req.query.offset) ?? 0;
       const limit = Number(req.query.limit) ?? 20;
-      const pageCount = Math.ceil(this.workouts.length / limit);
+
+      const monthSelected: string | undefined = isValidDate(
+        req.query.monthSelected
+      )
+        ? (req.query.monthSelected as string)
+        : undefined;
+
+      let categoriesSelected: string[] = [];
+      if (
+        req.query.categoriesSelected &&
+        req.query.categoriesSelected.length > 0
+      ) {
+        categoriesSelected = (req.query.categoriesSelected as string)
+          .split(",")
+          .filter((category) => categories.includes(category));
+      }
+
+      const filteredWorkouts = getFilteredWorkouts(this.workouts, {
+        monthSelected,
+        categoriesSelected,
+      });
+      const pageCount = Math.ceil(filteredWorkouts.length / limit);
       res.json({
         pageCount,
-        data: this.workouts.slice(offset, offset + limit),
+        data: filteredWorkouts.slice(offset, offset + limit),
       });
     });
-
     // request to get all the users by userName
     this.express.get("/workouts/:workoutId", (req, res) => {
       this.logger.info("url:::::" + req.url);
